@@ -1,10 +1,7 @@
-name: Build Windows
+name: Construire l'installateur Windows
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write
@@ -14,22 +11,20 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - run: npm install
-
-      - run: npx electron-builder --win --publish never
-
+      - run: npm run dist
       - uses: actions/upload-artifact@v4
         with:
-          name: gestion-pro-setup
-          path: dist/*.exe
-
-      - name: Publier dans les Releases
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.exe
+          name: Gestion-pro-Setup
+          path: dist/Gestion-pro-Setup.exe
+      - name: Publier le setup pour le telechargement
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v1.1.${{ github.run_number }}" dist/Gestion-pro-Setup.exe \
+            --title "Gestion pro - version ${{ github.run_number }}" \
+            --notes "Installateur Windows de Gestion pro" --latest
