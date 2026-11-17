@@ -1,0 +1,36 @@
+{
+  "name": "gestion-pro",
+  "version": "1.0.0",
+  "description": "Gestion pro de SALIMATOU SOW",
+  "main": "main.js",
+  "author": "Salimatou SOW",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.salimatousow.gestionpro",
+    "productName": "Gestion pro",
+    "files": ["main.js", "offline.html", "package.json"],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestion pro",
+      "installerLanguages": ["fr_FR"],
+      "language": "1036",
+      "artifactName": "Gestion-pro-Setup-${version}.${ext}"
+    }
+  }
+}

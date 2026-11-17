@@ -1,0 +1,9 @@
+GESTION PRO - Installateur Windows (.exe)
+
+1) Le logo est déjà prêt : build/icon.ico
+1) Mettez votre logo gestion-pro.ico dans le dossier "build" et renommez-le : icon.ico
+   (il doit contenir une taille 256x256, sinon la construction échoue)
+2) Envoyez tout le contenu de ce dossier dans un NOUVEAU dépôt GitHub (ex. gestion-pro-desktop)
+3) Sur GitHub : onglet Actions > "Construire l'installateur Windows" > Run workflow
+4) Après environ 3 à 5 minutes : ouvrez l'exécution terminée > Artifacts > Gestion-pro-Setup
+5) Téléchargez, décompressez : Gestion-pro-Setup-1.0.0.exe est votre setup
