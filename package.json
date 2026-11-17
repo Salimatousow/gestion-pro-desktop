@@ -1,6 +1,6 @@
 {
   "name": "gestion-pro",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Gestion pro de SALIMATOU SOW",
   "main": "main.js",
   "author": "Salimatou SOW",
@@ -30,7 +30,7 @@
       "shortcutName": "Gestion pro",
       "installerLanguages": ["fr_FR"],
       "language": "1036",
-      "artifactName": "Gestion-pro-Setup-${version}.${ext}"
+      "artifactName": "Gestion-pro-Setup.${ext}"
     }
   }
 }
