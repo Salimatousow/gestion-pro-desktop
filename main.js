@@ -1,6 +1,8 @@
-const { app, BrowserWindow, Menu, shell, protocol, net } = require('electron');
+const { app, BrowserWindow, Menu, shell, protocol, net, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Serveur en ligne (Railway)
 const REMOTE = 'https://gestion-pro-production-d124.up.railway.app';
@@ -15,26 +17,40 @@ protocol.registerSchemesAsPrivileged([
 if (!app.requestSingleInstanceLock()) app.quit();
 
 let win;
+let lastHash = '';        // version de la page actuellement affichée
+let pendingUpdate = false; // une nouvelle version attend d'être affichée
+let lastCheck = 0;
 
+const sha = (t) => crypto.createHash('sha1').update(t).digest('hex');
+const cachePath = () => path.join(app.getPath('userData'), 'page-cache.html');
 const html = (t) => new Response(t, {
   status: 200,
   headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }
 });
 
+// Télécharge la dernière version de l'application, en ignorant toute copie en mémoire
+async function fetchPage() {
+  const r = await net.fetch(REMOTE + '/app', { cache: 'no-store', signal: AbortSignal.timeout(6000) });
+  if (!r.ok) return null;
+  const t = await r.text();
+  return t.includes('Gestion pro') ? t : null;
+}
+
 // Page de l'application : version la plus récente si Internet, sinon copie gardée sur le PC
 async function page() {
-  const cache = path.join(app.getPath('userData'), 'page-cache.html');
   try {
-    const r = await net.fetch(REMOTE + '/app', { signal: AbortSignal.timeout(6000) });
-    if (r.ok) {
-      const t = await r.text();
-      if (t.includes('Gestion pro')) {
-        try { fs.writeFileSync(cache, t); } catch (e) {}
-        return html(t);
-      }
+    const t = await fetchPage();
+    if (t) {
+      lastHash = sha(t);
+      try { fs.writeFileSync(cachePath(), t); } catch (e) {}
+      return html(t);
     }
   } catch (e) {}
-  if (fs.existsSync(cache)) return html(fs.readFileSync(cache, 'utf8'));
+  if (fs.existsSync(cachePath())) {
+    const t = fs.readFileSync(cachePath(), 'utf8');
+    lastHash = sha(t);
+    return html(t);
+  }
   return html(fs.readFileSync(path.join(__dirname, 'offline.html'), 'utf8'));
 }
 
@@ -45,8 +61,61 @@ async function proxy(request, u) {
   delete headers.origin; delete headers.referer; delete headers.host;
   const body = ['GET', 'HEAD'].includes(request.method) ? undefined : Buffer.from(await request.arrayBuffer());
   return net.fetch(REMOTE + u.pathname + u.search, {
-    method: request.method, headers, body, signal: AbortSignal.timeout(20000)
+    method: request.method, headers, body, cache: 'no-store', signal: AbortSignal.timeout(20000)
   });
+}
+
+// Mise à jour automatique : toutes les 5 minutes et au retour sur la fenêtre,
+// on regarde s'il existe une nouvelle version ; elle s'affiche dès qu'aucune saisie n'est en cours.
+async function checkUpdate(force) {
+  if (!win) return;
+  const now = Date.now();
+  if (!force && now - lastCheck < 60000) return;
+  lastCheck = now;
+  try {
+    const t = await fetchPage();
+    if (t && lastHash && sha(t) !== lastHash) {
+      pendingUpdate = true;
+      try { fs.writeFileSync(cachePath(), t); } catch (e) {}
+    }
+  } catch (e) { return; }
+  tryReload();
+}
+
+async function tryReload() {
+  if (!win || !pendingUpdate) return;
+  try {
+    const idle = await win.webContents.executeJavaScript(`(() => { try {
+      if (typeof DIRTY !== 'undefined' && DIRTY) return false;
+      const ov = document.getElementById('ov'); if (ov && ov.innerHTML.trim()) return false;
+      const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return false;
+      if (typeof D !== 'undefined' && D && D.l && D.l.length) return false;
+      return true; } catch (e) { return true; } })()`);
+    if (idle) { pendingUpdate = false; win.webContents.reload(); }
+  } catch (e) {}
+}
+
+
+// Mise à jour automatique du logiciel lui-même (depuis les « Releases » GitHub) :
+// téléchargement en arrière-plan, puis proposition de redémarrer ; sinon installation à la fermeture.
+function setupUpdater() {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('error', () => {});
+  autoUpdater.on('update-downloaded', async () => {
+    try {
+      const r = await dialog.showMessageBox(win || undefined, {
+        type: 'info', buttons: ['Redémarrer maintenant', 'Plus tard'], defaultId: 0, cancelId: 1,
+        title: 'Gestion pro', message: 'Une nouvelle version de Gestion pro est prête.',
+        detail: 'Redémarrez pour l’installer. Sinon, elle s’installera à la fermeture du logiciel.'
+      });
+      if (r.response === 0) autoUpdater.quitAndInstall(true, true);
+    } catch (e) {}
+  });
+  const check = () => { try { autoUpdater.checkForUpdates().catch(() => {}); } catch (e) {} };
+  setTimeout(check, 15000);
+  setInterval(check, 4 * 60 * 60 * 1000);
 }
 
 function createWindow() {
@@ -72,6 +141,7 @@ function createWindow() {
       }`).catch(() => {});
   });
 
+  win.on('focus', () => checkUpdate(false));
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('app://')) return { action: 'allow' };
     shell.openExternal(url);
@@ -92,5 +162,8 @@ app.whenReady().then(() => {
     return new Response('Introuvable', { status: 404 });
   });
   createWindow();
+  setupUpdater();
+  setInterval(() => checkUpdate(true), 5 * 60 * 1000);
+  setInterval(tryReload, 60 * 1000);
 });
 app.on('window-all-closed', () => app.quit());

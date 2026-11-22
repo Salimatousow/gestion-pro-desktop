@@ -1,8 +1,10 @@
-GESTION PRO - Installateur Windows (.exe) - version 1.1
+GESTION PRO - logiciel Windows version 1.2 avec mise a jour automatique
 
-1) Envoyez tout le contenu de ce dossier dans le depot GitHub gestion-pro-desktop
-   (les fichiers du meme nom sont remplaces).
-2) Onglet Actions > "Construire l'installateur Windows" > Run workflow
-3) Apres 3 a 5 minutes, le setup est publie automatiquement dans "Releases".
-   Lien de telechargement permanent (depot public) :
-   https://github.com/Salimatousow/gestion-pro-desktop/releases/latest/download/Gestion-pro-Setup.exe
+1) Dans GitHub, ouvrez .github/workflows/main.yml, cliquez sur le crayon, remplacez tout le texte
+   par celui du fichier main.yml de ce dossier, puis "Commit changes".
+2) Envoyez ensuite main.js, package.json et LISEZMOI.txt dans le depot (Add file > Upload files).
+   La fabrication du setup demarre toute seule (onglet Actions).
+3) Quand la coche verte apparait, ouvrez "Releases" : le setup, latest.yml et le fichier .blockmap doivent y etre.
+4) Telechargez et installez le setup UNE derniere fois a la main.
+
+Ensuite : a chaque nouvelle version publiee, le logiciel la telecharge seul et propose de redemarrer.
